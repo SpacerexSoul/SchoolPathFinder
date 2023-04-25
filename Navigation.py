@@ -1,7 +1,21 @@
 import heapq
 import tkinter as tk
 import sqlite3
+import tkinter.messagebox as messagebox
 from tkinter import ttk
+
+def register(username, password):
+    conn = sqlite3.connect('ESCNav.db')
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
 
 class Node:
     def __init__(self, name):
@@ -93,8 +107,52 @@ def create_graph():
 
 
 def login(username, password):
-    # Implement your login logic here ritvarz
-    return True
+    conn = sqlite3.connect('ESCNav.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result is not None and result[0] == password:
+        return True
+    else:
+        return False
+
+class RegistrationWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.title("Register")
+        self.geometry("400x200")
+
+        self.username_label = tk.Label(self, text="Username:")
+        self.username_label.grid(row=0, column=0, padx=10, pady=10)
+
+        self.username_entry = tk.Entry(self)
+        self.username_entry.grid(row=0, column=1, padx=10)
+
+        self.password_label = tk.Label(self, text="Password:")
+        self.password_label.grid(row=1, column=0, padx=10, pady=10)
+
+        self.password_entry = tk.Entry(self, show="*")
+        self.password_entry.grid(row=1, column=1, padx=10)
+
+        self.create_account_button = tk.Button(self, text="Create Account", command=self.create_account)
+        self.create_account_button.grid(row=2, column=1, pady=10)
+
+    def create_account(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+
+        if register(username, password):
+            tk.messagebox.showinfo("Success", "Account created successfully!")
+            self.destroy()  # Close the registration window
+        else:
+            tk.messagebox.showerror("Error", "Username already exists. Please choose a different username.")
+
+
 
 class EastburyPathfinderApp(tk.Tk):
     def __init__(self):
@@ -118,12 +176,20 @@ class EastburyPathfinderApp(tk.Tk):
         self.login_button = tk.Button(self, text="Login", command=self.login)
         self.login_button.grid(row=2, column=1, pady=10)
 
+        self.register_button = tk.Button(self, text="Register", command=self.go_to_register)
+        self.register_button.grid(row=2, column=0, pady=10)
+
+    def go_to_register(self):
+        self.withdraw()  # Hide the login window
+        registration = RegistrationWindow(self)
+        registration.mainloop()
+        self.deiconify()  # Show the login window again
+
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
-        testing = 1
 
-        if testing == 1:
+        if login(username, password):
             self.destroy()
             pathfinder = PathfinderWindow()
             pathfinder.mainloop()
